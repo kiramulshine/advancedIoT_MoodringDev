@@ -1,0 +1,138 @@
+/*
+ * Project: MoodRing Sprint 1 Middle Band
+ * Description: Testing the function of the MoodRing middle band.  
+ * Author: Corey Williams
+ * Date: 3/31/2018
+ */
+ 
+ //Assign pins.
+ int hallSensor1 = A1;
+ int hallSensor2 = A2;
+ int led1 = D3;
+ int led2 = D4;
+ int redPin = D0;
+ int greenPin = D1;
+ int bluePin = D2;
+ //Assign global variables.
+ int direction = 0;
+ //Assign variables for interrupts.
+ volatile float lastTime1;
+ volatile float lastTime2;
+ volatile float currentTime1;
+ volatile float currentTime2;
+ volatile long revCounter1 = 0;
+ volatile long revCounter2 = 0;
+ //Create timers.
+ Timer timer(1000, light_timer);
+ Timer timer2(1000, rgb_timer);
+ 
+void setup() {
+
+  Serial.begin(9600);
+  //Assign inputs and outputs.
+  pinMode(hallSensor1, INPUT_PULLUP);
+  pinMode(hallSensor2, INPUT_PULLUP);
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT);
+  pinMode(redPin, OUTPUT);
+  pinMode(greenPin, OUTPUT);
+  pinMode(bluePin, OUTPUT);
+  //Turn RGB LED off.
+  analogWrite(redPin, 255);
+  analogWrite(greenPin, 255);
+  analogWrite(bluePin, 255);
+}
+
+void loop()
+{
+  //Interupts trigger when magnet is sensed.
+  attachInterrupt(hallSensor1, roundTime1, RISING);
+  attachInterrupt(hallSensor2, roundTime2, RISING);
+  //Calculate which direction the band is spinning.
+  if (revCounter1 >= 2 && revCounter2 >= 2)
+  {
+    if (currentTime1 > currentTime2 && lastTime1 > lastTime2)
+    {
+      direction = 1;
+      updateDisplay();
+      revCounter1 = 0;
+    }
+    if (currentTime2 > currentTime1 && lastTime2 > lastTime1)
+    {
+      direction = 2;
+      updateDisplay();
+      revCounter2 = 0;
+    }
+  }
+}
+//Handle the interupt.
+void roundTime1()
+{
+  digitalWrite(led1, HIGH);
+  timer.start();
+  revCounter1 ++;
+  currentTime1 = millis() - lastTime1;
+  lastTime1 = millis();
+  Serial.println(revCounter1);
+  Serial.println("currentTime1 : " + String(currentTime1));
+  Serial.println("lastTime1 : " + String(lastTime1));
+}
+//Handle the interrupt.
+void roundTime2()
+{
+  digitalWrite(led2, HIGH);
+  timer.start();
+  revCounter2 ++;
+  currentTime2 = millis() - lastTime2;
+  lastTime2 = millis();
+  Serial.println(revCounter2);
+  Serial.println("currentTime2 : " + String(currentTime2));
+  Serial.println("lastTime2 : " + String(lastTime2));
+}
+//Turns off check LED after 3 seconds.
+void light_timer()
+{
+  static int count = 0;
+  count ++;
+  if (count >= 3)
+    {
+      digitalWrite(led1, LOW);
+      digitalWrite(led2, LOW);
+      timer.stop();
+      timer.reset();
+      count = 0;
+    }
+}
+//RGB LED shows green if band is spinning clockwise.  Shows red if it is spinning counter clockwise.
+void updateDisplay()
+{
+  if (direction == 1)
+  {
+    analogWrite(redPin, 0);
+    analogWrite(greenPin, 255);
+    analogWrite(bluePin, 255);
+    timer2.start();
+  }
+  if (direction == 2)
+  {
+    analogWrite(redPin, 255);
+    analogWrite(greenPin, 0);
+    analogWrite(bluePin, 255);
+    timer2.start();
+  }
+}
+//Turns off RGB LED after 5 seconds.
+void rgb_timer()
+{
+  static int rgbCount = 0;
+  rgbCount ++;
+  if (rgbCount >= 5)
+  {
+    analogWrite(redPin, 255);
+    analogWrite(greenPin, 255);
+    analogWrite(bluePin, 255);
+    timer2.stop();
+    timer2.reset();
+    rgbCount = 0;
+  }
+}
